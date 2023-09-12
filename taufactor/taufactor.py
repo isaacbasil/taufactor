@@ -14,7 +14,7 @@ class Solver:
     Default solver for two phase images. Once solve method is
     called, tau, D_eff and D_rel are available as attributes.
     """
-
+    # un petit test to see if it worked 
     def __init__(self, img, bc=(-0.5, 0.5), D_0=1, device=torch.device('cuda')):
         """
         Initialise parameters, conc map and other tools that can be re-used
@@ -23,7 +23,7 @@ class Solver:
         :param img: input img with 1s conductive and 0s non-conductive
         :param bc: Upper and lower boundary conditions. Leave as default.
         :param D_0: reference material diffusivity
-        :param device: pytorch device, can be cuda or cpu 
+        :param device: pytorch device, can be cuda or cpu
         """
         # add batch dim now for consistency
         self.D_0 = D_0
@@ -174,7 +174,7 @@ class Solver:
                         abs(self.top_bc - self.bot_bc)).cpu()
             self.tau = self.VF / \
                 self.D_rel if self.D_rel != 0 else torch.tensor(torch.inf)
-        
+
 
         if verbose == 'per_iter':
             print(

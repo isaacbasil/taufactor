@@ -276,7 +276,7 @@ class FullTensorSolver:
         # solving params
         self.converged = False
         self.semi_converged = False
-        self.old_fl = torch.tensor([-1, -1, -1]) #TODO: make this into a vector, which has 3 fl components
+        self.old_fl = -1 #TODO: make this into a vector, which has 3 fl components
         self.iter = 0
         img = None
         # Results
@@ -399,12 +399,12 @@ class FullTensorSolver:
             self.converged = self.check_rolling_mean(conv_crit=1e-3)
 
             if not self.converged:
-                self.old_fl[0] = self.new_fl[0]
+                self.old_fl = self.new_fl[0]
                 return False
             else:
                 return True
         else:
-            self.old_fl[0] = self.new_fl[0]
+            self.old_fl = self.new_fl[0]
             return False
 
     def check_vertical_flux(self, conv_crit):
@@ -441,7 +441,7 @@ class FullTensorSolver:
         return False, fl_ave, err
 
     def check_rolling_mean(self, conv_crit):
-        err = (self.new_fl[0] - self.old_fl[0]) / (self.new_fl[0] + self.old_fl[0])
+        err = (self.new_fl[0] - self.old_fl) / (self.new_fl[0] + self.old_fl)
         if err < conv_crit:
             return True
         else:

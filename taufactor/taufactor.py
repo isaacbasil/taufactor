@@ -198,7 +198,7 @@ class Solver:
         vert_flux[self.conc[:, :-2, 1:-1, 1:-1] == 0] = 0
         vert_flux[self.conc[:, 1:-1, 1:-1, 1:-1] == 0] = 0
         fl = torch.sum(vert_flux, (0, 2, 3))[1:-1]
-        err = (fl.max() - fl.min())*2/(fl.max() + fl.min())
+        err = (fl.max() - fl.min())*2/(fl.max() + fl.min())  # ISAAC fl is a vector of average flux across each yz slice, so at steady state, all yz flux should be same
         if fl.min() == 0:
             return 'zero_flux', torch.mean(fl), err
         if err < conv_crit or torch.isnan(err).item():
@@ -379,15 +379,16 @@ class FullTensorSolver:
         # print progress
         self.semi_converged, self.new_fl, err = self.check_vertical_flux(
             conv_crit)
-        if self.semi_converged == 'zero_flux':
+        if self.semi_converged == 'zero_flux': #TODO: update this section so that non-diagonal comps still get calculated.
             self.D_rel = 0
             self.tau = np.inf
             return True
         else:
             self.D_rel = ((self.new_fl) * self.L_A /
-                        abs(self.top_bc - self.bot_bc)).cpu()
-            self.tau = self.VF / \
-                self.D_rel if self.D_rel != 0 else torch.tensor(torch.inf)
+                        abs(self.top_bc - self.bot_bc)).to(self.device)   #TODO: this had .cpu() tagged on the end, which was removed to prevent errors in the next calculation
+
+
+            self.tau = torch.where(self.D_rel != 0, self.VF / self.D_rel, torch.tensor(torch.inf))
 
 
         if verbose == 'per_iter':
@@ -427,13 +428,17 @@ class FullTensorSolver:
         z_flux[self.conc[:, 1:-1, 1:-1, 1:-1] == 0] = 0
 
 
-        fl = torch.sum(vert_flux, (0, 2, 3))[1:-1]
-        err = (fl.max() - fl.min())*2/(fl.max() + fl.min())
-        if fl.min() == 0:
-            return 'zero_flux', torch.mean(fl), err
+        fl_x = torch.sum(vert_flux, (0, 2, 3))[1:-1]
+        fl_y = torch.sum(y_flux, (0, 1, 3))[1:-1]
+        fl_z = torch.sum(z_flux, (0, 1, 2))[1:-1]
+        fl_ave = torch.tensor([torch.mean(arr) for arr in [fl_x, fl_y, fl_z]])
+
+        err = (fl_x.max() - fl_x.min())*2/(fl_x.max() + fl_x.min())
+        if fl_x.min() == 0:
+            return 'zero_flux', fl_ave, err
         if err < conv_crit or torch.isnan(err).item():
-            return True, torch.mean(fl), err
-        return False, torch.mean(fl), err
+            return True, fl_ave, err
+        return False, fl_ave, err
 
     def check_rolling_mean(self, conv_crit):
         err = (self.new_fl[0] - self.old_fl[0]) / (self.new_fl[0] + self.old_fl[0])
